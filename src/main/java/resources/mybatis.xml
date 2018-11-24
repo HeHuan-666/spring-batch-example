@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+
+	<!--MyBatis主配置 -->
+	<settings>
+		<!-- 全局性地启用或禁用所有在mapper配置文件中配置的缓存 -->
+		<setting name="cacheEnabled" value="true" />
+		
+		<!-- 全局性地启用或禁用延迟加载。当禁用时，所有关联的配置都会立即加载 -->
+		<setting name="lazyLoadingEnabled" value="true" />
+		
+		<!-- 当启用后，一个有延迟加载属性的对象的任何一个延迟属性被加载时，该对象的所有的属性都会被加载。否则，所有属性都是按需加载。 -->
+		<setting name="aggressiveLazyLoading" value="true" />
+		
+		<!-- 允许或禁止从单一的语句返回多个结果集（需要驱动程序兼容）。 -->
+		<setting name="multipleResultSetsEnabled" value="true" />
+		
+		<!-- 使用列的标签而不是列的名称。在这方面，不同的驱动程序可能有不同的实现。参考驱动程序的文档或者进行测试来确定您所使用的驱动程的行为 -->
+		<setting name="useColumnLabel" value="true" />
+		
+		<!-- 允许JDBC 自动生成主键。需要驱动程序兼容。如果设置为true则会强行自动生成主键，然而有些则不会自动生成主键（驱动程序不兼容），但依旧会工作（如Derby）。 -->
+		<setting name="useGeneratedKeys" value="false" />
+		
+		<!-- 指定MyBatis是否以及如何自动将列映射到字段/属性。PARTIAL:只是自动映射简单、非嵌套的结果集。FULL: 将会自动映射任何复杂的（嵌套或非嵌套）的结果集。 -->
+		<setting name="autoMappingBehavior" value="PARTIAL" />
+		
+		<!-- 配置默认的执行器（executor）。SIMPLE ：简单的执行器。REUSE ：重用prepared statements的执行器。BATCH：重用statements并且进行批量更新的执行器。 -->
+		<setting name="defaultExecutorType" value="REUSE" />
+		
+		<!-- Statement的执行超时时间，单位为秒。如果没有指明，查询将无超时时间限制，除非在映射文件中设置Statement属性值。 -->
+		<setting name="defaultStatementTimeout" value="20" />
+		
+		<setting name="safeRowBoundsEnabled" value="false" />
+		
+		<setting name="mapUnderscoreToCamelCase" value="false" />
+		
+		<setting name="localCacheScope" value="SESSION" />
+		
+		<setting name="jdbcTypeForNull" value="OTHER" />
+		
+		<setting name="lazyLoadTriggerMethods" value="equals,clone,hashCode,toString" />
+	</settings>
+
+</configuration>

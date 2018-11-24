@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+	
+	<!-- 启动组件扫描，排除@Controller组件，该组件由dispatcher-servlet.xml配置文件扫描 -->
+	<context:component-scan base-package="com.lsd">
+		<context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller" />
+	</context:component-scan>
+	
+	<!-- 加载多个属性配置 -->
+	<bean id="propertyConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="locations">
+			<list>
+				<value>classpath:resources/db.properties</value>
+			</list>
+		</property>
+	</bean>
+
+	<!-- DBCP 数据源  -->
+	<bean id="dataSource" class="org.apache.commons.dbcp2.BasicDataSource" destroy-method="close">
+		<property name="driverClassName" value="${mysql.dbcp.driverClassName}" />
+		<property name="url" value="${mysql.dbcp.url}" />
+		<property name="username" value="${mysql.dbcp.username}" />
+		<property name="password" value="${mysql.dbcp.password}" />
+		<property name="initialSize" value="${mysql.dbcp.initialSize}" />
+		<property name="maxTotal" value="${mysql.dbcp.maxTotal}" />
+		<property name="maxIdle" value="${mysql.dbcp.maxIdle}" />
+		<property name="logAbandoned" value="${mysql.dbcp.logAbandoned}" />
+		<property name="removeAbandonedTimeout" value="${mysql.dbcp.removeAbandonedTimeout}" />
+		<property name="maxWaitMillis" value="${mysql.dbcp.maxWaitMillis}" />
+		<property name="testOnBorrow" value="${mysql.dbcp.testOnBorrow}" />
+		<property name="testOnReturn" value="${mysql.dbcp.testOnReturn}" />
+		<property name="testWhileIdle" value="${mysql.dbcp.testWhileIdle}" />
+	</bean>
+	
+	<!-- 配置SqlSessionFactoryBean -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="configLocation" value="classpath:resources/mybatis.xml" />
+		<property name="typeAliasesPackage" value="com.lsd.model" />
+		<property name="mapperLocations">
+			<array>
+				<value>classpath:com/lsd/model/*Mapper.xml</value>
+			</array>
+		</property>
+		<property name="plugins">
+			<array>
+				<bean class="com.github.pagehelper.PageHelper">
+					<property name="properties">
+						<value>
+							<!-- 4.0.0以后版本可以不设置该参数 -->
+							dialect=mysql
+							<!-- 设置为true时，如果pageSize=0或者RowBounds.limit = 0就会查询出全部的结果 -->
+							<!-- （相当于没有执行分页查询，但是返回结果仍然是Page类型） -->
+							pageSizeZero=true
+							<!-- 3.3.0版本可用 - 分页参数合理化，默认false禁用 -->
+							<!-- 启用合理化时，如果pageNum<1会查询第一页，如果pageNum>pages会查询最后一页 -->
+							<!-- 禁用合理化时，如果pageNum<1或pageNum>pages会返回空数据 -->
+							reasonable=false
+					        <!-- 该参数默认为false -->
+					        <!-- 设置为true时，会将RowBounds第一个参数offset当成pageNum页码使用 -->
+					        <!-- 和startPage中的pageNum效果一样-->
+					        offsetAsPageNum=true
+						</value>
+					</property>
+				</bean>
+			</array>
+		</property>
+	</bean>
+	
+	<!-- MyBatis数据操作模板(重用prepared statements的执行器) -->
+	<bean id="sqlSessionTemplateReuse" class="org.mybatis.spring.SqlSessionTemplate" scope="prototype">         
+		<constructor-arg index="0" ref="sqlSessionFactory" />
+		<constructor-arg index="1" value="REUSE" />
+	</bean>
+	
+	<!-- MyBatis数据操作模板(重用statements并且进行批量更新的执行器) -->
+	<bean id="sqlSessionTemplateBatch" class="org.mybatis.spring.SqlSessionTemplate" scope="prototype">         
+		<constructor-arg index="0" ref="sqlSessionFactory" />
+		<constructor-arg index="1" value="BATCH" />
+	</bean>
+	
+</beans>

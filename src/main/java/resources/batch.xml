@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch.xsd">
+
+	<!-- 加载多个属性配置 -->
+	<bean id="propertyConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="locations">
+			<list>
+				<value>classpath:resources/db.properties</value>
+			</list>
+		</property>
+	</bean>
+
+	<!-- DBCP 数据源  -->
+	<bean id="dataSource" class="org.apache.commons.dbcp2.BasicDataSource" destroy-method="close">
+		<property name="driverClassName" value="${mysql.dbcp.driverClassName}" />
+		<property name="url" value="${mysql.dbcp.url}" />
+		<property name="username" value="${mysql.dbcp.username}" />
+		<property name="password" value="${mysql.dbcp.password}" />
+		<property name="initialSize" value="${mysql.dbcp.initialSize}" />
+		<property name="maxTotal" value="${mysql.dbcp.maxTotal}" />
+		<property name="maxIdle" value="${mysql.dbcp.maxIdle}" />
+		<property name="logAbandoned" value="${mysql.dbcp.logAbandoned}" />
+		<property name="removeAbandonedTimeout" value="${mysql.dbcp.removeAbandonedTimeout}" />
+		<property name="maxWaitMillis" value="${mysql.dbcp.maxWaitMillis}" />
+		<property name="testOnBorrow" value="${mysql.dbcp.testOnBorrow}" />
+		<property name="testOnReturn" value="${mysql.dbcp.testOnReturn}" />
+		<property name="testWhileIdle" value="${mysql.dbcp.testWhileIdle}" />
+	</bean>
+	
+	<!-- ************************* Spring Batch Start ******************** -->
+	<!-- spring batch 事务 -->
+	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager" >
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+	
+    <!-- 基础组件，用来持久化Job的元数据，默认使内存 -->
+	<bean id="jobRepository" class="org.springframework.batch.core.repository.support.MapJobRepositoryFactoryBean">
+		<property  name="transactionManager" ref ="transactionManager" />
+	</bean>
+	
+	<!-- 基础组件，用来启动Job -->
+	<bean id="jobLauncher" class="org.springframework.batch.core.launch.support.SimpleJobLauncher">
+	    <property name="jobRepository" ref="jobRepository" />
+	</bean>
+	
+	<batch:job-repository id="jobRepositoryPush" data-source="dataSource" transaction-manager="transactionManager" isolation-level-for-create="SERIALIZABLE" table-prefix="batch_" max-varchar-length="1000" />
+
+    <bean id="jobLauncherPush" class="org.springframework.batch.core.launch.support.SimpleJobLauncher">
+        <property name="jobRepository" ref="jobRepositoryPush" />
+    </bean>
+	
+	<!-- Hello World! BEGIN -->
+    <bean id="hello" class="com.lsd.batch.hello.HelloTasklet">
+        <property name="message" value="Hello "></property>
+    </bean>
+
+    <bean id="world" class="com.lsd.batch.hello.HelloTasklet">
+        <property name="message" value="World!"></property>
+    </bean>
+    
+    <batch:job id="helloWorldJob">
+        <batch:step id="step_hello" next="step_world">
+            <tasklet ref="hello" transaction-manager="transactionManager"></tasklet>
+        </batch:step>
+        <batch:step id="step_world">
+            <tasklet ref="world" transaction-manager="transactionManager"></tasklet>
+        </batch:step>
+    </batch:job>
+    <!-- Hello World! END -->
+	
+	<!-- DB to CSV BEGIN -->
+	<!-- 业务 Reader -->
+    <!-- <bean id="userReader" class="org.springframework.batch.item.database.IbatisPagingItemReader">
+        <property name="sqlMapClient" ref="sqlSessionFactory" />
+        <property name="queryId" value="UserMapper.selectListForBatch" />
+        <property name="pageSize" value="1000" />
+    </bean> -->
+    <bean id="itemReader" class="org.springframework.batch.item.database.JdbcPagingItemReader" scope="step">
+	    <property name="dataSource" ref="dataSource" />
+	    <property name="queryProvider">
+	        <bean class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+	        	<property name="dataSource" ref="dataSource" />
+	            <property name="selectClause" value="select id, name, sex, age, phone, create_time" />
+	            <property name="fromClause" value="from user"/>
+	            <!-- <property name="whereClause" value="where name like :name" /> -->
+	            <property name="sortKey" value="id" />
+	        </bean>
+	    </property>
+	    <!-- <property name="parameterValues">
+	        <map>
+	            <entry key="name" value="#{jobParameters['name']}" />
+	        </map>
+	    </property> -->
+	    <property name="pageSize" value="1000" />
+	    <property name="rowMapper" ref="userMapper" />
+	</bean>
+	
+	<bean id="userMapper" class="com.lsd.batch.db2file.UserMapper" />		
+	<bean id="userProcessor" class="com.lsd.batch.db2file.UserProcessor" />	
+	<bean id="userWriter" class="com.lsd.batch.db2file.UserWriter" />
+	
+	<bean id="taskExecutor" class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor" >
+		<property name="corePoolSize" value="20"  />
+		<property name="maxPoolSize" value="200" />
+		<property name="queueCapacity" value="50" />
+	</bean>
+	
+	<!-- 写CSV文件 -->
+    <bean id="csvItemWriter" class="org.springframework.batch.item.file.FlatFileItemWriter" scope="step">
+        <property name="resource" value="file:#{jobParameters['outputFilePath']}"/>
+        <property name="encoding" value="GBK"/>
+        <property name="lineAggregator">
+            <bean class="org.springframework.batch.item.file.transform.DelimitedLineAggregator">
+                <property name="delimiter" value=","></property>
+                <property name="fieldExtractor">
+                    <bean class="org.springframework.batch.item.file.transform.BeanWrapperFieldExtractor">
+                        <property name="names" value="id,name,sex,age,phone,createTime"></property>
+                    </bean>
+                </property>
+            </bean>
+        </property>
+    </bean>
+	
+	<!-- 业务 Job(应用组件，是Batch操作的基础执行单元) -->
+	<batch:job id="userJob">
+        <batch:step id="userStep">
+            <batch:tasklet task-executor="taskExecutor">
+                <batch:chunk reader="itemReader" processor="userProcessor" writer="csvItemWriter" commit-interval="1000" />
+            </batch:tasklet>
+        </batch:step>
+    </batch:job>
+    <!-- DB to CSV END -->
+    <!-- ************************* Spring Batch End ******************** -->
+
+</beans>
